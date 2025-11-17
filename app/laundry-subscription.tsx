@@ -20,13 +20,14 @@ const SUBSCRIPTION_PLANS = [
     price: 120000,
     monthlyPrice: 10000,
     services: 24,
-    description: '2 услуги в месяц',
+    description: '2 стирки в месяц',
     color: '#00BFA6',
     features: [
-      'Одежда (2 предмета/мес)',
-      'Скидка 10% на доп. услуги',
+      'Стирка 2 комплекта одежды/мес',
+      'Скидка 10% на доп. стирки',
       'Бесплатная доставка',
       'Приоритетная обработка',
+      'Глажка в подарок',
     ],
   },
   {
@@ -35,16 +36,17 @@ const SUBSCRIPTION_PLANS = [
     price: 200000,
     monthlyPrice: 16667,
     services: 48,
-    description: '4 услуги в месяц',
+    description: '4 стирки в месяц',
     color: '#7C4DFF',
     popular: true,
     features: [
-      'Одежда (4 предмета/мес)',
-      'Скидка 20% на доп. услуги',
+      'Стирка 4 комплекта одежды/мес',
+      'Скидка 20% на доп. стирки',
       'Бесплатная доставка',
       'Приоритетная обработка',
-      'Чистка обуви (1 раз/мес)',
-      'Premium защита вещей',
+      'Глажка в подарок',
+      'Premium моющие средства',
+      'Деликатная стирка',
     ],
   },
   {
@@ -53,16 +55,17 @@ const SUBSCRIPTION_PLANS = [
     price: 350000,
     monthlyPrice: 29167,
     services: 96,
-    description: '8 услуг в месяц',
+    description: '8 стирок в месяц',
     color: '#FFD700',
     features: [
-      'Одежда (8 предметов/мес)',
-      'Скидка 30% на доп. услуги',
+      'Стирка 8 комплектов одежды/мес',
+      'Скидка 30% на доп. стирки',
       'Бесплатная доставка',
       'VIP обработка (24ч)',
-      'Чистка обуви (2 раза/мес)',
-      'Чистка ковра (1 раз/квартал)',
-      'Premium защита вещей',
+      'Глажка в подарок',
+      'Premium моющие средства',
+      'Деликатная стирка',
+      'Химчистка (2 раза/мес)',
       'Личный менеджер',
     ],
   },
@@ -72,19 +75,20 @@ const SUBSCRIPTION_PLANS = [
     price: 500000,
     monthlyPrice: 41667,
     services: 144,
-    description: '12 услуг в месяц',
+    description: '12 стирок в месяц',
     color: '#FF4081',
     features: [
-      'Одежда (12 предметов/мес)',
-      'Скидка 40% на доп. услуги',
+      'Стирка 12 комплектов одежды/мес',
+      'Скидка 40% на доп. стирки',
       'Бесплатная доставка',
       'VIP обработка (12ч)',
-      'Чистка обуви (4 раза/мес)',
-      'Чистка ковра (1 раз/2мес)',
-      'Чистка мебели (1 раз/квартал)',
-      'Premium защита вещей',
+      'Глажка в подарок',
+      'Premium моющие средства',
+      'Деликатная стирка',
+      'Химчистка (4 раза/мес)',
       'Личный менеджер 24/7',
       'Эко-средства бесплатно',
+      'Ремонт одежды',
     ],
   },
 ];
@@ -107,7 +111,7 @@ export default function LaundrySubscriptionScreen() {
           onPress: () => {
             Alert.alert(
               'Успешно!',
-              `Абонемент "${plan.name}" оформлен! Ваши ${plan.services} услуг будут доступны в течение года.`,
+              `Абонемент "${plan.name}" оформлен! Ваши ${plan.services} стирок будут доступны в течение года.`,
               [{ text: 'ОК', onPress: () => router.back() }]
             );
           },
@@ -134,7 +138,7 @@ export default function LaundrySubscriptionScreen() {
             <Package color="#FFD700" size={48} strokeWidth={2} />
             <Text style={styles.headerTitle}>Годовой абонемент</Text>
             <Text style={styles.headerSubtitle}>
-              Экономьте до 40% на прачечных услугах
+              Стирка, глажка и химчистка одежды круглый год
             </Text>
           </View>
         </LinearGradient>
@@ -155,8 +159,8 @@ export default function LaundrySubscriptionScreen() {
               <Gift color="#FFD700" size={24} />
             </View>
             <View style={styles.benefitInfo}>
-              <Text style={styles.benefitTitle}>Бонусы каждый месяц</Text>
-              <Text style={styles.benefitDesc}>Дополнительные услуги в подарок</Text>
+              <Text style={styles.benefitTitle}>Глажка бесплатно</Text>
+              <Text style={styles.benefitDesc}>Профессиональная глажка включена</Text>
             </View>
           </View>
 
@@ -165,8 +169,8 @@ export default function LaundrySubscriptionScreen() {
               <Star color="#FF4081" size={24} />
             </View>
             <View style={styles.benefitInfo}>
-              <Text style={styles.benefitTitle}>VIP обслуживание</Text>
-              <Text style={styles.benefitDesc}>Приоритетная обработка заказов</Text>
+              <Text style={styles.benefitTitle}>Химчистка со скидкой</Text>
+              <Text style={styles.benefitDesc}>Специальные тарифы для абонентов</Text>
             </View>
           </View>
         </View>
@@ -228,7 +232,7 @@ export default function LaundrySubscriptionScreen() {
                 </View>
                 <View style={styles.planStat}>
                   <Package color="#999" size={16} />
-                  <Text style={styles.planStatText}>{plan.services} услуг</Text>
+                  <Text style={styles.planStatText}>{plan.services} стирок</Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -279,16 +283,16 @@ export default function LaundrySubscriptionScreen() {
           <Text style={styles.infoTitle}>Часто задаваемые вопросы</Text>
           
           <View style={styles.faqCard}>
-            <Text style={styles.faqQuestion}>Можно ли переносить услуги?</Text>
+            <Text style={styles.faqQuestion}>Можно ли переносить стирки?</Text>
             <Text style={styles.faqAnswer}>
-              Да! Неиспользованные услуги переносятся на следующий месяц в рамках года.
+              Да! Неиспользованные стирки переносятся на следующий месяц в рамках года.
             </Text>
           </View>
 
           <View style={styles.faqCard}>
-            <Text style={styles.faqQuestion}>Что если нужно больше услуг?</Text>
+            <Text style={styles.faqQuestion}>Что если нужно больше стирок?</Text>
             <Text style={styles.faqAnswer}>
-              Вы можете заказать дополнительные услуги со скидкой по вашему плану.
+              Вы можете заказать дополнительные стирки со скидкой по вашему плану.
             </Text>
           </View>
 
