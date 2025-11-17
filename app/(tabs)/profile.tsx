@@ -1,6 +1,6 @@
 import { useApp } from '@/contexts/AppContext';
 import { router } from 'expo-router';
-import { Award, Sparkles, Trophy, TrendingUp, Heart, LogOut } from 'lucide-react-native';
+import { Award, Sparkles, Trophy, TrendingUp, Heart, LogOut, Package } from 'lucide-react-native';
 import React from 'react';
 import {
   View,
@@ -111,6 +111,19 @@ export default function ProfileScreen() {
 
 
         <TouchableOpacity
+          style={styles.subscriptionButton}
+          onPress={() => router.push('/laundry-subscription' as any)}
+        >
+          <View style={styles.subscriptionIcon}>
+            <Package color="#fff" size={24} />
+          </View>
+          <View style={styles.subscriptionContent}>
+            <Text style={styles.subscriptionTitle}>Годовой абонемент</Text>
+            <Text style={styles.subscriptionSubtitle}>Экономьте до 40% на прачечных</Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={styles.charityButton}
           onPress={() => router.push('/charity' as any)}
         >
@@ -122,8 +135,6 @@ export default function ProfileScreen() {
             <Text style={styles.charitySubtitle}>Помогите тем, кто нуждается</Text>
           </View>
         </TouchableOpacity>
-
-
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Достижения</Text>
@@ -403,6 +414,49 @@ const styles = StyleSheet.create({
   achievementDesc: {
     fontSize: 14,
     color: '#999',
+  },
+  subscriptionButton: {
+    flexDirection: 'row',
+    backgroundColor: '#00BFA6',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 20,
+    borderRadius: 16,
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  subscriptionIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  subscriptionContent: {
+    flex: 1,
+  },
+  subscriptionTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: '#fff',
+    marginBottom: 4,
+  },
+  subscriptionSubtitle: {
+    fontSize: 14,
+    color: '#fff',
+    opacity: 0.9,
   },
   charityButton: {
     flexDirection: 'row',
