@@ -3,7 +3,7 @@ import { trpcVanillaClient } from '@/lib/trpc';
 import { generateObject } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
 import { Colors, Shadows, BorderRadius, Spacing, Typography } from '@/constants/colors';
-import { Order, CleaningType, AccessType, CleaningOrderDetails } from '@/types';
+import { Order, CleaningType, AccessType, CleaningOrderDetails, CategorizedPhoto, PhotoAngle } from '@/types';
 import * as ImagePicker from 'expo-image-picker';
 import { router, Stack } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
@@ -72,7 +72,7 @@ export default function NewCleaningOrderScreen() {
     },
   });
   
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [categorizedPhotos, setCategorizedPhotos] = useState<CategorizedPhoto[]>([]);
   const [cleaningType, setCleaningType] = useState<CleaningType | null>(null);
   const [area, setArea] = useState('');
   const [rooms, setRooms] = useState('');
@@ -98,14 +98,14 @@ export default function NewCleaningOrderScreen() {
   
 
 
-  const analyzeImages = async (imageUris: string[]) => {
+  const analyzeImages = async (photos: CategorizedPhoto[]) => {
     console.log('🔍 Starting AI analysis...');
     setIsAnalyzing(true);
     
     try {
-      const imageMessages = imageUris.map(uri => ({
+      const imageMessages = photos.map(photo => ({
         type: 'image' as const,
-        image: uri,
+        image: photo.uri,
       }));
 
       const analysisSchema = z.object({
@@ -156,7 +156,7 @@ export default function NewCleaningOrderScreen() {
     }
   };
 
-  const pickImages = async () => {
+  const pickImageForAngle = async (angle: PhotoAngle) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
     if (status !== 'granted') {
@@ -166,15 +166,28 @@ export default function NewCleaningOrderScreen() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'] as any,
-      allowsMultipleSelection: true,
+      allowsMultipleSelection: false,
       quality: 0.8,
       base64: true,
     });
 
     if (!result.canceled && result.assets.length > 0) {
-      const newPhotos = result.assets.slice(0, 3).map(asset => asset.uri);
-      const updatedPhotos = [...photos, ...newPhotos].slice(0, 3);
-      setPhotos(updatedPhotos);
+      const uri = result.assets[0].uri;
+      const labels: Record<PhotoAngle, string> = {
+        general: 'Общий план',
+        medium: 'Средний ракурс',
+        detail: 'Детальный ракурс',
+      };
+      
+      const newPhoto: CategorizedPhoto = {
+        uri,
+        angle,
+        label: labels[angle],
+      };
+      
+      const filtered = categorizedPhotos.filter(p => p.angle !== angle);
+      const updatedPhotos = [...filtered, newPhoto];
+      setCategorizedPhotos(updatedPhotos);
       
       if (updatedPhotos.length > 0) {
         analyzeImages(updatedPhotos).catch(err => {
@@ -184,8 +197,8 @@ export default function NewCleaningOrderScreen() {
     }
   };
 
-  const removePhoto = (index: number) => {
-    setPhotos(prev => prev.filter((_, i) => i !== index));
+  const removePhoto = (angle: PhotoAngle) => {
+    setCategorizedPhotos(prev => prev.filter(p => p.angle !== angle));
   };
 
 
@@ -275,11 +288,11 @@ export default function NewCleaningOrderScreen() {
 
   const handleCreateOrder = async () => {
     console.log('=== Button pressed! ===');
-    console.log('Photos:', photos.length);
+    console.log('Photos:', categorizedPhotos.length);
     console.log('Cleaning type:', cleaningType);
     console.log('Area:', area);
     
-    if (photos.length === 0) {
+    if (categorizedPhotos.length === 0) {
       console.log('Validation failed: No photos');
       setValidationError('Пожалуйста, загрузите хотя бы 1 фото помещения');
       return;
@@ -321,7 +334,8 @@ export default function NewCleaningOrderScreen() {
       id: `order-${Date.now()}`,
       userId: 'user-1',
       category: 'cleaning',
-      photos,
+      photos: categorizedPhotos.map(p => p.uri),
+      categorizedPhotos,
       comment: `${CLEANING_TYPES.find(t => t.value === cleaningType)?.label} - ${area} м²`,
       address,
       priceOffer: getFinalPrice(),
@@ -428,46 +442,53 @@ export default function NewCleaningOrderScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📸 Фото помещения</Text>
-          <Text style={styles.sectionHint}>До 3 фотографий</Text>
+          <Text style={styles.sectionTitle}>📸 Фото помещения по ракурсам</Text>
+          <Text style={styles.sectionHint}>Загрузите фото с разных ракурсов для точной оценки</Text>
           
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false} 
-            style={styles.photosScroll}
-            contentContainerStyle={styles.photosContent}
-          >
-            {photos.length === 0 ? (
-              <TouchableOpacity style={styles.mainPhotoPlaceholder} onPress={pickImages}>
-                <View style={styles.photoIconCircle}>
-                  <Camera color={Colors.cleaning} size={40} strokeWidth={1.5} />
-                </View>
-                <Text style={styles.photoPlaceholderTitle}>Загрузить фото</Text>
-                <Text style={styles.photoPlaceholderSubtitle}>Фото помещения для клинера</Text>
-              </TouchableOpacity>
-            ) : (
-              <>
-                {photos.map((photo, index) => (
-                  <View key={index} style={styles.photoContainer}>
-                    <Image source={{ uri: photo }} style={styles.photoThumb} contentFit="cover" />
-                    <TouchableOpacity 
-                      style={styles.removePhotoButton} 
-                      onPress={() => removePhoto(index)}
-                    >
-                      <X color={Colors.textWhite} size={16} strokeWidth={2.5} />
-                    </TouchableOpacity>
+          <View style={styles.anglePhotosContainer}>
+            {(['general', 'medium', 'detail'] as PhotoAngle[]).map((angle) => {
+              const photo = categorizedPhotos.find(p => p.angle === angle);
+              const labels: Record<PhotoAngle, string> = {
+                general: 'Общий план',
+                medium: 'Средний ракурс',
+                detail: 'Детальный ракурс',
+              };
+              const icons: Record<PhotoAngle, string> = {
+                general: '🏠',
+                medium: '📐',
+                detail: '🔍',
+              };
+              
+              return (
+                <View key={angle} style={styles.anglePhotoCard}>
+                  <View style={styles.anglePhotoHeader}>
+                    <Text style={styles.anglePhotoIcon}>{icons[angle]}</Text>
+                    <Text style={styles.anglePhotoLabel}>{labels[angle]}</Text>
                   </View>
-                ))}
-                
-                {photos.length < 3 && (
-                  <TouchableOpacity style={styles.addPhotoButton} onPress={pickImages}>
-                    <Camera color={Colors.cleaning} size={28} strokeWidth={1.5} />
-                    <Text style={styles.addPhotoText}>Еще фото</Text>
-                  </TouchableOpacity>
-                )}
-              </>
-            )}
-          </ScrollView>
+                  
+                  {photo ? (
+                    <View style={styles.anglePhotoImageContainer}>
+                      <Image source={{ uri: photo.uri }} style={styles.anglePhotoImage} contentFit="cover" />
+                      <TouchableOpacity 
+                        style={styles.removeAnglePhotoButton} 
+                        onPress={() => removePhoto(angle)}
+                      >
+                        <X color={Colors.textWhite} size={14} strokeWidth={2.5} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity 
+                      style={styles.anglePhotoPlaceholder} 
+                      onPress={() => pickImageForAngle(angle)}
+                    >
+                      <Camera color={Colors.cleaning} size={24} strokeWidth={1.5} />
+                      <Text style={styles.anglePhotoPlaceholderText}>Добавить</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            })}
+          </View>
           
           {isAnalyzing && (
             <View style={styles.analysisLoading}>
@@ -1511,5 +1532,74 @@ const styles = StyleSheet.create({
   },
   notificationClose: {
     padding: Spacing.xs,
+  },
+  anglePhotosContainer: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  anglePhotoCard: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    borderRadius: BorderRadius.medium,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.divider,
+    ...Shadows.small,
+  },
+  anglePhotoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginBottom: Spacing.sm,
+  },
+  anglePhotoIcon: {
+    fontSize: 16,
+  },
+  anglePhotoLabel: {
+    ...Typography.small,
+    fontWeight: '600' as const,
+    color: Colors.textPrimary,
+    flex: 1,
+  },
+  anglePhotoImageContainer: {
+    position: 'relative',
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: BorderRadius.medium,
+    overflow: 'hidden',
+  },
+  anglePhotoImage: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: Colors.backgroundCard,
+  },
+  removeAnglePhotoButton: {
+    position: 'absolute',
+    top: Spacing.xs,
+    right: Spacing.xs,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    width: 24,
+    height: 24,
+    borderRadius: BorderRadius.round,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  anglePhotoPlaceholder: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: BorderRadius.medium,
+    borderWidth: 2,
+    borderColor: Colors.cleaning,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.backgroundCard,
+    gap: Spacing.xs,
+  },
+  anglePhotoPlaceholderText: {
+    ...Typography.small,
+    color: Colors.cleaning,
+    fontWeight: '600' as const,
   },
 });

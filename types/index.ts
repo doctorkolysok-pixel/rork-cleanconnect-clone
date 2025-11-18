@@ -37,11 +37,20 @@ export interface TazaIndexData {
   protectionEnabled: boolean;
 }
 
+export type PhotoAngle = 'general' | 'medium' | 'detail';
+
+export interface CategorizedPhoto {
+  uri: string;
+  angle: PhotoAngle;
+  label: string;
+}
+
 export interface Order {
   id: string;
   userId: string;
   category: OrderCategory;
   photos: string[];
+  categorizedPhotos?: CategorizedPhoto[];
   comment: string;
   address: string;
   priceOffer: number;
