@@ -166,27 +166,25 @@ export default function NewCleaningOrderScreen() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'] as any,
-      allowsMultipleSelection: false,
+      allowsMultipleSelection: true,
       quality: 0.8,
       base64: true,
     });
 
     if (!result.canceled && result.assets.length > 0) {
-      const uri = result.assets[0].uri;
       const labels: Record<PhotoAngle, string> = {
         general: 'Общий план',
         medium: 'Средний ракурс',
         detail: 'Детальный ракурс',
       };
       
-      const newPhoto: CategorizedPhoto = {
-        uri,
+      const newPhotos: CategorizedPhoto[] = result.assets.map(asset => ({
+        uri: asset.uri,
         angle,
         label: labels[angle],
-      };
+      }));
       
-      const filtered = categorizedPhotos.filter(p => p.angle !== angle);
-      const updatedPhotos = [...filtered, newPhoto];
+      const updatedPhotos = [...categorizedPhotos, ...newPhotos];
       setCategorizedPhotos(updatedPhotos);
       
       if (updatedPhotos.length > 0) {
@@ -197,8 +195,8 @@ export default function NewCleaningOrderScreen() {
     }
   };
 
-  const removePhoto = (angle: PhotoAngle) => {
-    setCategorizedPhotos(prev => prev.filter(p => p.angle !== angle));
+  const removePhoto = (uri: string) => {
+    setCategorizedPhotos(prev => prev.filter(p => p.uri !== uri));
   };
 
 
@@ -447,7 +445,7 @@ export default function NewCleaningOrderScreen() {
           
           <View style={styles.anglePhotosContainer}>
             {(['general', 'medium', 'detail'] as PhotoAngle[]).map((angle) => {
-              const photo = categorizedPhotos.find(p => p.angle === angle);
+              const photos = categorizedPhotos.filter(p => p.angle === angle);
               const labels: Record<PhotoAngle, string> = {
                 general: 'Общий план',
                 medium: 'Средний ракурс',
@@ -460,23 +458,26 @@ export default function NewCleaningOrderScreen() {
               };
               
               return (
-                <View key={angle} style={styles.anglePhotoCard}>
-                  <View style={styles.anglePhotoHeader}>
+                <View key={angle} style={styles.anglePhotoSection}>
+                  <View style={styles.anglePhotoSectionHeader}>
                     <Text style={styles.anglePhotoIcon}>{icons[angle]}</Text>
                     <Text style={styles.anglePhotoLabel}>{labels[angle]}</Text>
+                    <Text style={styles.anglePhotoCount}>({photos.length})</Text>
                   </View>
                   
-                  {photo ? (
-                    <View style={styles.anglePhotoImageContainer}>
-                      <Image source={{ uri: photo.uri }} style={styles.anglePhotoImage} contentFit="cover" />
-                      <TouchableOpacity 
-                        style={styles.removeAnglePhotoButton} 
-                        onPress={() => removePhoto(angle)}
-                      >
-                        <X color={Colors.textWhite} size={14} strokeWidth={2.5} />
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.anglePhotoScrollContent}>
+                    {photos.map((photo) => (
+                      <View key={photo.uri} style={styles.anglePhotoImageContainer}>
+                        <Image source={{ uri: photo.uri }} style={styles.anglePhotoImage} contentFit="cover" />
+                        <TouchableOpacity 
+                          style={styles.removeAnglePhotoButton} 
+                          onPress={() => removePhoto(photo.uri)}
+                        >
+                          <X color={Colors.textWhite} size={14} strokeWidth={2.5} />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                    
                     <TouchableOpacity 
                       style={styles.anglePhotoPlaceholder} 
                       onPress={() => pickImageForAngle(angle)}
@@ -484,7 +485,7 @@ export default function NewCleaningOrderScreen() {
                       <Camera color={Colors.cleaning} size={24} strokeWidth={1.5} />
                       <Text style={styles.anglePhotoPlaceholderText}>Добавить</Text>
                     </TouchableOpacity>
-                  )}
+                  </ScrollView>
                 </View>
               );
             })}
@@ -1534,9 +1535,31 @@ const styles = StyleSheet.create({
     padding: Spacing.xs,
   },
   anglePhotosContainer: {
-    flexDirection: 'row',
-    gap: Spacing.md,
+    gap: Spacing.lg,
     marginTop: Spacing.md,
+  },
+  anglePhotoSection: {
+    backgroundColor: Colors.background,
+    borderRadius: BorderRadius.medium,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.divider,
+    ...Shadows.small,
+  },
+  anglePhotoSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginBottom: Spacing.md,
+  },
+  anglePhotoCount: {
+    ...Typography.small,
+    color: Colors.textSecondary,
+    marginLeft: 'auto',
+  },
+  anglePhotoScrollContent: {
+    gap: Spacing.md,
+    paddingRight: Spacing.md,
   },
   anglePhotoCard: {
     flex: 1,
@@ -1564,8 +1587,8 @@ const styles = StyleSheet.create({
   },
   anglePhotoImageContainer: {
     position: 'relative',
-    width: '100%',
-    aspectRatio: 1,
+    width: 120,
+    height: 120,
     borderRadius: BorderRadius.medium,
     overflow: 'hidden',
   },
@@ -1586,8 +1609,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   anglePhotoPlaceholder: {
-    width: '100%',
-    aspectRatio: 1,
+    width: 120,
+    height: 120,
     borderRadius: BorderRadius.medium,
     borderWidth: 2,
     borderColor: Colors.cleaning,
