@@ -1,7 +1,7 @@
 import { useApp } from '@/contexts/AppContext';
 import { trpc } from '@/lib/trpc';
 import { CATEGORIES } from '@/constants/categories';
-import { Order, OrderCategory, AIAnalysis } from '@/types';
+import { Order, OrderCategory, AIAnalysis, CategorizedPhoto, PhotoAngle } from '@/types';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { Camera, Sparkles, MapPin } from 'lucide-react-native';
@@ -17,14 +17,14 @@ import {
   ActivityIndicator,
   Platform,
   Alert,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { generateObject } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
 import { AVG_PRICES } from '@/constants/avgPrices';
 import { calculateTazaIndex, TazaIndexResult } from '@/constants/tazaIndex';
-import { TrendingUp, Plus, Minus, Shield } from 'lucide-react-native';
-import { KeyboardAvoidingView } from 'react-native';
+import { TrendingUp, Shield } from 'lucide-react-native';
 
 
 
@@ -34,6 +34,7 @@ export default function HomeScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<OrderCategory | null>(null);
   const [photos, setPhotos] = useState<string[]>([]);
+  const [categorizedPhotos, setCategorizedPhotos] = useState<CategorizedPhoto[]>([]);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [comment, setComment] = useState('');
   const [address, setAddress] = useState('Алматы, ул. Абая 150');
@@ -42,7 +43,7 @@ export default function HomeScreen() {
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
   const [tazaIndexResult, setTazaIndexResult] = useState<TazaIndexResult | null>(null);
 
-  const pickImage = async () => {
+  const pickImageForAngle = async (angle: PhotoAngle) => {
     if (!selectedCategory) {
       Alert.alert('Выберите категорию', 'Сначала выберите категорию услуги');
       return;
@@ -57,23 +58,41 @@ export default function HomeScreen() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'] as any,
-      allowsMultipleSelection: false,
+      allowsMultipleSelection: true,
       quality: 0.8,
       base64: true,
     });
 
-    if (!result.canceled && result.assets[0]) {
-      const imageUri = result.assets[0].uri;
-      const base64 = result.assets[0].base64;
+    if (!result.canceled && result.assets.length > 0) {
+      const labels: Record<PhotoAngle, string> = {
+        general: 'Общий план',
+        medium: 'Средний ракурс',
+        detail: 'Детальный ракурс',
+      };
       
-      console.log('Image picked, analyzing...');
-      setPhotos([imageUri]);
-      setPhotoBase64(base64 || null);
+      const newPhotos: CategorizedPhoto[] = result.assets.map(asset => ({
+        uri: asset.uri,
+        angle,
+        label: labels[angle],
+      }));
       
-      if (base64 && selectedCategory) {
-        await analyzeImage(base64, selectedCategory);
+      const updatedPhotos = [...categorizedPhotos, ...newPhotos];
+      setCategorizedPhotos(updatedPhotos);
+      setPhotos(updatedPhotos.map(p => p.uri));
+      
+      if (updatedPhotos.length > 0 && selectedCategory) {
+        const firstPhoto = result.assets[0];
+        if (firstPhoto.base64) {
+          setPhotoBase64(firstPhoto.base64);
+          await analyzeImage(firstPhoto.base64, selectedCategory);
+        }
       }
     }
+  };
+
+  const removePhoto = (uri: string) => {
+    setCategorizedPhotos(prev => prev.filter(p => p.uri !== uri));
+    setPhotos(prev => prev.filter(p => p !== uri));
   };
 
   const analyzeImage = async (base64: string, category: OrderCategory) => {
@@ -219,6 +238,7 @@ export default function HomeScreen() {
     console.log('Resetting form');
     setSelectedCategory(null);
     setPhotos([]);
+    setCategorizedPhotos([]);
     setPhotoBase64(null);
     setComment('');
     setPriceOffer('');
@@ -240,6 +260,7 @@ export default function HomeScreen() {
     if (oldCategory !== categoryId) {
       console.log('Category changed, resetting form');
       setPhotos([]);
+      setCategorizedPhotos([]);
       setPhotoBase64(null);
       setAiAnalysis(null);
       setPriceOffer('');
@@ -375,17 +396,56 @@ export default function HomeScreen() {
               ))}
             </View>
 
-            <Text style={styles.label}>Фото загрязнения *</Text>
-            <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
-              {photos.length > 0 ? (
-                <Image source={{ uri: photos[0] }} style={styles.photoPreview} contentFit="cover" />
-              ) : (
-                <View style={styles.photoPlaceholder}>
-                  <Camera color="#00BFA6" size={32} />
-                  <Text style={styles.photoPlaceholderText}>Загрузить фото</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+            <Text style={styles.label}>Фото по ракурсам *</Text>
+            <Text style={styles.photoHint}>Загрузите фото с разных ракурсов для точной оценки</Text>
+            
+            <View style={styles.anglePhotosContainer}>
+              {(['general', 'medium', 'detail'] as PhotoAngle[]).map((angle) => {
+                const photos = categorizedPhotos.filter(p => p.angle === angle);
+                const labels: Record<PhotoAngle, string> = {
+                  general: 'Общий план',
+                  medium: 'Средний ракурс',
+                  detail: 'Детальный ракурс',
+                };
+                const icons: Record<PhotoAngle, string> = {
+                  general: '🏠',
+                  medium: '📐',
+                  detail: '🔍',
+                };
+                
+                return (
+                  <View key={angle} style={styles.anglePhotoSection}>
+                    <View style={styles.anglePhotoHeader}>
+                      <Text style={styles.anglePhotoIcon}>{icons[angle]}</Text>
+                      <Text style={styles.anglePhotoLabel}>{labels[angle]}</Text>
+                      <Text style={styles.anglePhotoCount}>({photos.length})</Text>
+                    </View>
+                    
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.anglePhotoScrollContent}>
+                      {photos.map((photo) => (
+                        <View key={photo.uri} style={styles.anglePhotoImageContainer}>
+                          <Image source={{ uri: photo.uri }} style={styles.anglePhotoImage} contentFit="cover" />
+                          <TouchableOpacity 
+                            style={styles.removeAnglePhotoButton} 
+                            onPress={() => removePhoto(photo.uri)}
+                          >
+                            <Text style={styles.removeButtonText}>×</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                      
+                      <TouchableOpacity 
+                        style={styles.anglePhotoPlaceholder} 
+                        onPress={() => pickImageForAngle(angle)}
+                      >
+                        <Camera color="#00BFA6" size={24} />
+                        <Text style={styles.anglePhotoPlaceholderText}>Добавить</Text>
+                      </TouchableOpacity>
+                    </ScrollView>
+                  </View>
+                );
+              })}
+            </View>
 
             {isAnalyzing && (
               <View style={styles.analyzingContainer}>
@@ -1144,5 +1204,89 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600' as const,
     color: '#B8860B',
+  },
+  photoHint: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 12,
+  },
+  anglePhotosContainer: {
+    gap: 16,
+    marginTop: 12,
+  },
+  anglePhotoSection: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+  },
+  anglePhotoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  anglePhotoIcon: {
+    fontSize: 16,
+  },
+  anglePhotoLabel: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#1E1E1E',
+    flex: 1,
+  },
+  anglePhotoCount: {
+    fontSize: 13,
+    color: '#999',
+  },
+  anglePhotoScrollContent: {
+    gap: 12,
+    paddingRight: 12,
+  },
+  anglePhotoImageContainer: {
+    position: 'relative',
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  anglePhotoImage: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#f8f8f8',
+  },
+  removeAnglePhotoButton: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeButtonText: {
+    fontSize: 18,
+    color: '#fff',
+    fontWeight: '700' as const,
+  },
+  anglePhotoPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#00BFA6',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8f8f8',
+    gap: 4,
+  },
+  anglePhotoPlaceholderText: {
+    fontSize: 12,
+    color: '#00BFA6',
+    fontWeight: '600' as const,
   },
 });
