@@ -103,6 +103,11 @@ export default function NewCleaningOrderScreen() {
     setIsAnalyzing(true);
     
     try {
+      if (!process.env.EXPO_PUBLIC_TOOLKIT_URL) {
+        console.log('⚠️ AI Toolkit not configured. Skipping analysis.');
+        return null;
+      }
+
       const imageMessages = photos.map(photo => ({
         type: 'image' as const,
         image: photo.uri,
@@ -142,12 +147,10 @@ export default function NewCleaningOrderScreen() {
     } catch (error: any) {
       console.error('❌ AI Analysis error:', error);
       console.error('Error message:', error?.message);
-      console.error('Error details:', error);
-      console.error('Error stack:', error?.stack);
       
       const errorMsg = error?.message || String(error);
-      if (errorMsg.includes('JSON Parse error') || errorMsg.includes('Unexpected character')) {
-        console.error('⚠️ AI Toolkit endpoint returning non-JSON response. Check EXPO_PUBLIC_TOOLKIT_URL configuration.');
+      if (errorMsg.includes('JSON') || errorMsg.includes('Unexpected')) {
+        console.error('⚠️ AI Toolkit endpoint not available or misconfigured. Analysis skipped.');
       }
       
       return null;
