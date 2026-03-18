@@ -440,53 +440,52 @@ export default function NewCleaningOrderScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📸 Фото помещения</Text>
-          <Text style={styles.sectionHint}>Загрузите фото с разных ракурсов</Text>
+          <Text style={styles.sectionTitle}>📸 Фото помещения по ракурсам</Text>
+          <Text style={styles.sectionHint}>Загрузите фото с разных ракурсов для точной оценки</Text>
           
-          <View style={styles.compactPhotosContainer}>
+          <View style={styles.anglePhotosContainer}>
             {(['general', 'medium', 'detail'] as PhotoAngle[]).map((angle) => {
               const photos = categorizedPhotos.filter(p => p.angle === angle);
-              const icons: Record<PhotoAngle, any> = {
-                general: Home,
-                medium: Camera,
-                detail: Sparkles,
-              };
-              const IconComponent = icons[angle];
               const labels: Record<PhotoAngle, string> = {
-                general: 'Общий',
-                medium: 'Средний',
-                detail: 'Детали',
+                general: 'Общий план',
+                medium: 'Средний ракурс',
+                detail: 'Детальный ракурс',
+              };
+              const icons: Record<PhotoAngle, string> = {
+                general: '🏠',
+                medium: '📐',
+                detail: '🔍',
               };
               
               return (
-                <View key={angle} style={styles.compactAngleSection}>
-                  <TouchableOpacity 
-                    style={styles.compactAngleButton}
-                    onPress={() => pickImageForAngle(angle)}
-                    activeOpacity={0.7}
-                  >
-                    <IconComponent color={photos.length > 0 ? Colors.cleaning : Colors.textSecondary} size={18} strokeWidth={2} />
-                    <Text style={[styles.compactAngleLabel, photos.length > 0 && styles.compactAngleLabelActive]}>{labels[angle]}</Text>
-                    <View style={[styles.compactPhotoCount, photos.length > 0 && styles.compactPhotoCountActive]}>
-                      <Text style={[styles.compactPhotoCountText, photos.length > 0 && styles.compactPhotoCountTextActive]}>{photos.length}</Text>
-                    </View>
-                  </TouchableOpacity>
+                <View key={angle} style={styles.anglePhotoSection}>
+                  <View style={styles.anglePhotoSectionHeader}>
+                    <Text style={styles.anglePhotoIcon}>{icons[angle]}</Text>
+                    <Text style={styles.anglePhotoLabel}>{labels[angle]}</Text>
+                    <Text style={styles.anglePhotoCount}>({photos.length})</Text>
+                  </View>
                   
-                  {photos.length > 0 && (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.compactPhotosList}>
-                      {photos.map((photo) => (
-                        <View key={photo.uri} style={styles.compactPhotoItem}>
-                          <Image source={{ uri: photo.uri }} style={styles.compactPhotoImage} contentFit="cover" />
-                          <TouchableOpacity 
-                            style={styles.compactPhotoRemove} 
-                            onPress={() => removePhoto(photo.uri)}
-                          >
-                            <X color={Colors.textWhite} size={10} strokeWidth={3} />
-                          </TouchableOpacity>
-                        </View>
-                      ))}
-                    </ScrollView>
-                  )}
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.anglePhotoScrollContent}>
+                    {photos.map((photo) => (
+                      <View key={photo.uri} style={styles.anglePhotoImageContainer}>
+                        <Image source={{ uri: photo.uri }} style={styles.anglePhotoImage} contentFit="cover" />
+                        <TouchableOpacity 
+                          style={styles.removeAnglePhotoButton} 
+                          onPress={() => removePhoto(photo.uri)}
+                        >
+                          <X color={Colors.textWhite} size={14} strokeWidth={2.5} />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                    
+                    <TouchableOpacity 
+                      style={styles.anglePhotoPlaceholder} 
+                      onPress={() => pickImageForAngle(angle)}
+                    >
+                      <Camera color={Colors.cleaning} size={24} strokeWidth={1.5} />
+                      <Text style={styles.anglePhotoPlaceholderText}>Добавить</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
                 </View>
               );
             })}
@@ -1535,84 +1534,95 @@ const styles = StyleSheet.create({
   notificationClose: {
     padding: Spacing.xs,
   },
-  compactPhotosContainer: {
+  anglePhotosContainer: {
+    gap: Spacing.lg,
+    marginTop: Spacing.md,
+  },
+  anglePhotoSection: {
     backgroundColor: Colors.background,
     borderRadius: BorderRadius.medium,
     padding: Spacing.md,
-    marginTop: Spacing.md,
     borderWidth: 1,
     borderColor: Colors.divider,
-    gap: Spacing.sm,
     ...Shadows.small,
   },
-  compactAngleSection: {
-    gap: Spacing.xs,
-  },
-  compactAngleButton: {
+  anglePhotoSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: BorderRadius.small,
+    gap: Spacing.xs,
+    marginBottom: Spacing.md,
+  },
+  anglePhotoCount: {
+    ...Typography.small,
+    color: Colors.textSecondary,
+    marginLeft: 'auto',
+  },
+  anglePhotoScrollContent: {
+    gap: Spacing.md,
+    paddingRight: Spacing.md,
+  },
+  anglePhotoCard: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    borderRadius: BorderRadius.medium,
+    padding: Spacing.md,
     borderWidth: 1,
     borderColor: Colors.divider,
-    gap: Spacing.sm,
+    ...Shadows.small,
   },
-  compactAngleLabel: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
+  anglePhotoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginBottom: Spacing.sm,
+  },
+  anglePhotoIcon: {
+    fontSize: 16,
+  },
+  anglePhotoLabel: {
+    ...Typography.small,
+    fontWeight: '600' as const,
+    color: Colors.textPrimary,
     flex: 1,
   },
-  compactAngleLabelActive: {
-    color: Colors.cleaning,
-    fontWeight: '600' as const,
-  },
-  compactPhotoCount: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: Colors.divider,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  compactPhotoCountActive: {
-    backgroundColor: Colors.cleaning,
-  },
-  compactPhotoCountText: {
-    ...Typography.small,
-    fontSize: 11,
-    fontWeight: '700' as const,
-    color: Colors.textSecondary,
-  },
-  compactPhotoCountTextActive: {
-    color: Colors.textWhite,
-  },
-  compactPhotosList: {
-    gap: Spacing.xs,
-    paddingLeft: Spacing.md,
-  },
-  compactPhotoItem: {
+  anglePhotoImageContainer: {
     position: 'relative',
-    width: 60,
-    height: 60,
-    borderRadius: BorderRadius.small,
+    width: 120,
+    height: 120,
+    borderRadius: BorderRadius.medium,
     overflow: 'hidden',
   },
-  compactPhotoImage: {
+  anglePhotoImage: {
     width: '100%',
     height: '100%',
     backgroundColor: Colors.backgroundCard,
   },
-  compactPhotoRemove: {
+  removeAnglePhotoButton: {
     position: 'absolute',
-    top: 2,
-    right: 2,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    top: Spacing.xs,
+    right: Spacing.xs,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    width: 24,
+    height: 24,
+    borderRadius: BorderRadius.round,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  anglePhotoPlaceholder: {
+    width: 120,
+    height: 120,
+    borderRadius: BorderRadius.medium,
+    borderWidth: 2,
+    borderColor: Colors.cleaning,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.backgroundCard,
+    gap: Spacing.xs,
+  },
+  anglePhotoPlaceholderText: {
+    ...Typography.small,
+    color: Colors.cleaning,
+    fontWeight: '600' as const,
   },
 });
